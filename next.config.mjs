@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 
-const devConfig = {
+const nextConfig = {
     reactStrictMode: true,
     webpack: (config, { isServer }) => {
       if (!isServer) {
@@ -14,8 +14,4 @@ const devConfig = {
   },      
 };
 
-const prodConfig = {
-  
-}
-
-export default process.env.NODE_ENV === 'development' ? devConfig : prodConfig;
+export default nextConfig;
