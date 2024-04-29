@@ -10,6 +10,7 @@
   },
   "postinstall": "patch-package",
   "dependencies": {
+    "@heroicons/react": "^2.1.3",
     "@react-pdf/renderer": "^3.4.3",
     "@types/dateformat": "^5.0.2",
     "dateformat": "^5.0.3",
