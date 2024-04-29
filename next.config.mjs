@@ -15,11 +15,7 @@ const devConfig = {
 };
 
 const prodConfig = {
-  "output": "export",
-  "basePath": "/nextjs-github-pages",
-  "images": {
-    unoptimized: true,
-  },
+  
 }
 
 export default process.env.NODE_ENV === 'development' ? devConfig : prodConfig;
