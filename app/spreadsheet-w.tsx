@@ -1,4 +1,5 @@
 import { SpreadSheet } from "./spreadsheet";
+import {Suspense} from 'react'
 
 export type RowData = {
     name: string 
@@ -15,5 +16,7 @@ export type RowsData = {
 }
 
 export const SpreadSheetW = () => {
-    return <SpreadSheet />
+    return <Suspense fallback={<div>Loading...</div>}>
+    <SpreadSheet />
+    </Suspense>
 }

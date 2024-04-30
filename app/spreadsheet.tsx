@@ -5,9 +5,7 @@ import { GoogleSpreadsheet } from "google-spreadsheet"
 import { JWT } from "google-auth-library"
 import dateFormat from "dateformat";
 import { useSearchParams } from 'next/navigation'
-
 import { Form } from "./form"
-import { useRouter } from "next/navigation";
 
 export type RowData = {
     name: string 
@@ -33,13 +31,13 @@ export const SpreadSheet = () => {
     const spreadsheet = searchParams.get('spreadsheet')
     // '1B6dFoP6p6RjGED3LICf3CSSzPhs06KxC7EuD59dpLTY'
 
-    if (!spreadsheet) {
-        throw new Error('Не указан адрес Google таблицы')
-    }
-
     useEffect(() => {
         const setSheetObj = async () => {
             try {
+                if (!spreadsheet) {
+                    throw new Error('Нужно указать адрес таблицы')
+                }
+
                 const newJWT = new JWT({
                     email: process.env.NEXT_PUBLIC_CLIENT_EMAIL,
                     key: process.env.NEXT_PUBLIC_PRIVATE_KEY?.replace(/\\n/g, '\n'),
