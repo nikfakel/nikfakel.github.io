@@ -22,7 +22,7 @@ export type RowsData = {
 }
 
 export const SpreadSheet = () => {
-    const [checkNumber, setCheckNumber] = useState<number | null>(null)
+    const [checkNumber, setCheckNumber] = useState<string | null>(null)
     const [isSaving, setIsSaving] = useState(false)
     const [isSaved, setIsSaved] = useState(false)
     const sheetObj = useRef<GoogleSpreadsheet | null>(null)
@@ -53,10 +53,22 @@ export const SpreadSheet = () => {
                 const rows = await sheet.getRows();
                 const lastRow = rows[rows.length - 1]
                 if (lastRow) {
+                    const date = dateFormat(new Date(), 'ddmmyy')
                     const checkValue = lastRow.get(sheet.headerValues[0])
-                    const checkNumber = checkValue.match(/-\d*$/)
-                    if (checkNumber && checkNumber[0]) {
-                        setCheckNumber(checkNumber[0] - 1)
+
+                    if (!checkValue.match(/\d{6}-\d*/)) {
+                        setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
+                    } else {
+                        const prevDate = checkValue.match(/\d{6}/)
+                        console.log(prevDate[0], date)
+                        if (prevDate && prevDate[0] && prevDate[0] === date) {
+                            const checkNumber = checkValue.match(/-\d*$/)
+                            if (checkNumber && checkNumber[0]) {
+                                setCheckNumber(dateFormat(new Date(), 'ddmmyy') + String(checkNumber[0] - 1))
+                            }
+                        } else {
+                            setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
+                        }
                     }
                 }
             } catch (e) {
@@ -86,6 +98,8 @@ export const SpreadSheet = () => {
         setIsSaving(false)
     }
     }
+
+    console.log(checkNumber)
 
     return checkNumber ? <Form initialCheckNumber={checkNumber} publishNewRow={publishNewRow} error={error} isSaving={isSaving} isSaved={isSaved} setSaved={setIsSaved} setError={setError} /> : null
 }

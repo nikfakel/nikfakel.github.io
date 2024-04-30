@@ -64,7 +64,7 @@ const organizations: Organization[] = [{
 
 
 interface Props {
-    initialCheckNumber: number
+    initialCheckNumber: string
     publishNewRow: (data: RowsData) => void
     error: string | null
     isSaving: boolean
@@ -74,7 +74,7 @@ interface Props {
 }
 
 export const Form = ({ initialCheckNumber, publishNewRow, error, isSaving, isSaved, setSaved, setError }: Props) => {
-    const [ checkNumber, setCheckNumber] = useState<string>(dateFormat(new Date(), 'ddmmyy') + String(initialCheckNumber))
+    const [ checkNumber, setCheckNumber] = useState<string>(initialCheckNumber)
     const [ currentOrg, setCurrentOrg] = useState('roga')
     const [ currentWorker, setCurrentWorker] = useState('skoto')
     const [ useGuaranty, setUseGuaranty] = useState(true)
@@ -114,6 +114,7 @@ export const Form = ({ initialCheckNumber, publishNewRow, error, isSaving, isSav
         setError(null)
     }
 
+    console.log(isSaved)
     return <main className="p-12">
     <h1 className='text-xl font-bold mb-10'>Создать новый чек</h1>
       <div className="flex items-center mb-5">
@@ -224,7 +225,7 @@ export const Form = ({ initialCheckNumber, publishNewRow, error, isSaving, isSav
             <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" onClick={() => { setGoods(prev => [...prev, { name: ' ', price: '0', quantity: '0' }])}} >Добавить строку</button>
         </div>
         <div className="flex mb-5">
-            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5 disabled:bg-gray-600" onClick={saveRows} disabled={!isValidForm || isSaving}>{isSaving ? 'Сохранение...' : isSaved ? 'Сохранено' : 'Сохранить'}</button>
+            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5 disabled:bg-gray-600" onClick={saveRows} disabled={!isValidForm || isSaving || isSaved}>{isSaving ? 'Сохранение...' : isSaved ? 'Сохранено' : 'Сохранить'}</button>
             <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5" onClick={print}>Распечатать</button>
             <PDFDownloadLink 
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
