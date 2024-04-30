@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+import a from 'url'
+import b from 'node:url'
 
 const nextConfig = {
     reactStrictMode: true,
@@ -8,7 +10,8 @@ const nextConfig = {
         config.resolve.fallback.tls = false
         config.resolve.fallback.net = false
         config.resolve.fallback.child_process = false
-      }
+        config.resolve.fallback.url = 'node:url'
+    }
 
     return config
   },      
