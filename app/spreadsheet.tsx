@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { GoogleSpreadsheet } from "google-spreadsheet"
 import { JWT } from "google-auth-library"
 import dateFormat from "dateformat";
+import { useSearchParams } from 'next/navigation'
 
 import { Form } from "./form"
 import { useRouter } from "next/navigation";
@@ -28,7 +29,13 @@ export const SpreadSheet = () => {
     const [isSaved, setIsSaved] = useState(false)
     const sheetObj = useRef<GoogleSpreadsheet | null>(null)
     const [error, setError] = useState<string | null>(null)
-    const router = useRouter()
+    const searchParams = useSearchParams()
+    const spreadsheet = searchParams.get('spreadsheet')
+    // '1B6dFoP6p6RjGED3LICf3CSSzPhs06KxC7EuD59dpLTY'
+
+    if (!spreadsheet) {
+        throw new Error('Не указан адрес Google таблицы')
+    }
 
     useEffect(() => {
         const setSheetObj = async () => {
@@ -40,7 +47,7 @@ export const SpreadSheet = () => {
                     
                 });
 
-                const doc = new GoogleSpreadsheet('1B6dFoP6p6RjGED3LICf3CSSzPhs06KxC7EuD59dpLTY', newJWT);
+                const doc = new GoogleSpreadsheet(spreadsheet, newJWT);
                 await doc.loadInfo()
                 sheetObj.current = doc
 
