@@ -9,15 +9,9 @@ export type PDFData = {
   manager: string,
   clientName: string
   clientPhone: string
-}
-
-export type Organization = {
-  name: string
-  id: string
-  address: string
-  inn: string
-  phone: string
-  workers: { name: string, id: string, jobTitle: string }[]
+  disableImage: boolean
+  useGuarantee: boolean
+  guaranteeTime: number
 }
 
 interface Props {
@@ -31,15 +25,17 @@ interface Props {
   setError: (error: string | null) => void
 }
 
+const guaranteeTime = [0, 1, 3, 6, 12, 24, 36]
+
 export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSaving, isSaved, setSaved, setError }: Props) => {
   const [ checkNumber, setCheckNumber] = useState<string>(initialCheckNumber)
   const [ prevCheckNumber, setPrevCheckNumber] = useState<string>(initialCheckNumber)
   const [ currentManager, setCurrentManager] = useState(orgData.managers[0])
   const [ currentSeller, setCurrentSeller] = useState(orgData.sellers[0])
-  const [ useGuaranty, setUseGuaranty] = useState(true)
-  const [ showPreview, setShowPreview] = useState(false)
+  const [ useGuarantee, setUseGuarantee] = useState(true)
+  const [ showPreview, setShowPreview] = useState(true)
   const pdfRef = useRef<HTMLIFrameElement>(null)
-  const [goods, setGoods] = useState([{name: ' ', price: '0', quantity: '0' }])
+  const [goods, setGoods] = useState([{name: ' ', price: '0', quantity: '0', guarantee: 6, isGuarantee: false }])
 
   const [isSell, setIsSell] = useState(true)
   const [isIssuance, setIsIssuance] = useState(false)
@@ -50,6 +46,8 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
   const [clientSource, setClientSource] = useState<string>('')
+
+  const [disableImage, setDisableImage] = useState(false)
 
   const isValidForm = goods.length > 0 && goods.every(item => item.name.length > 0 && Number(item.quantity) > 0)
 
@@ -102,7 +100,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
   }
 
   const resetState = () => {
-    setGoods([{name: ' ', price: '0', quantity: '0' }])
+    setGoods([{name: ' ', price: '0', quantity: '0', guarantee: 0, isGuarantee: false }])
     const checkNumberVal = checkNumber.match(/-\d*$/)
     if (checkNumberVal && checkNumberVal[0]) {
       setCheckNumber(dateFormat(new Date(), 'ddmmyy') + String(Number(checkNumberVal[0]) - 1))
@@ -115,6 +113,9 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
     manager: currentManager,
     clientName,
     clientPhone,
+    useGuarantee,
+    disableImage,
+    guaranteeTime: goods.reduce((acc, item) => item.isGuarantee ? item.guarantee : acc, 0)
   }
 
   return <main className="p-12">
@@ -194,8 +195,14 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
 
 
     <div className="flex items-center mb-10">
-      <input id="default-checkbox" type="checkbox" checked={useGuaranty} onChange={() => setUseGuaranty(p => !p)} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
-      <label htmlFor="default-checkbox" className="ms-2 text-sm font-medium">Добавить гарантию</label>
+      <div className="flex items-center mr-10">
+        <input id="guarantee" type="checkbox" checked={useGuarantee} onChange={() => setUseGuarantee(p => !p)} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
+        <label htmlFor="guarantee" className="ms-2 text-sm font-medium">Добавить гарантию</label>
+      </div>
+      <div className="flex items-center">
+        <input id="disable-image" type="checkbox" checked={disableImage} onChange={() => setDisableImage(p => !p)} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
+        <label htmlFor="disable-image" className="ms-2 text-sm font-medium">Отключить фон</label>
+      </div>
     </div>
 
     <div className="flex items-center mb-10">
@@ -229,7 +236,6 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
       </div>
     </div>
 
-
     <div className="">
       <table className="min-w-full divide-y-2 divide-gray-200 bg-white text-sm mb-5">
         <thead className="ltr:text-left rtl:text-right text-center">
@@ -238,6 +244,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
             <th className="whitespace-nowrap px-2 py-2 font-medium text-gray-900">Кол-во (единиц)</th>
             <th className="whitespace-nowrap px-2 py-2 font-medium text-gray-900">Цена за единицу</th>
             <th className="whitespace-nowrap px-2 py-2 font-medium text-gray-900">Сумма</th>
+            <th className="whitespace-nowrap px-2 py-2 font-medium text-gray-900">Гарантия</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
@@ -254,7 +261,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
                   className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
                 />
               </td>
-              <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">
+              <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900 text-center">
                 <input
                   type="number"
                   min={0}
@@ -264,10 +271,10 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
                     const newNumber = e.target.value.charAt(0) === '0' ? e.target.value.slice(1) : e.target.value
                     return { ...item, quantity: newNumber }
                   }))}
-                  className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
+                  className="mt-1.5 rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
                 />
               </td>
-              <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">
+              <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900 text-center">
                 <input
                   type="number"
                   value={item.price}
@@ -277,17 +284,38 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
                       const newNumber = e.target.value.charAt(0) === '0' ? e.target.value.slice(1) : e.target.value
                       return { ...item, price: newNumber }
                     })
-
                   })}
-                  className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
+                  className="mt-1.5 rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
                 />
               </td>
-              <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">
+              <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900 text-center">
                 {Number(goods[index].price) * Number(goods[index].quantity)}
+              </td>
+              <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900 text-center">
+                <div className="flex items-center">
+                  <select
+                    className="w-20 mr-5 rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-1 pr-0"
+                    value={item.guarantee}
+                    onChange={ e => setGoods(prev => {
+                      return prev.map((item, i) => {
+                        if (i !== index) return item
+                        return { ...item, guarantee: Number(e.target.value) }
+                      })
+                    })}
+                  >
+                    {guaranteeTime.map(time => <option key={time} value={time}>{time} мес.</option>)}
+                  </select>
+                  <input
+                    type="checkbox"
+                    checked={item.isGuarantee}
+                    onChange={() => {setGoods(prev => prev.map((item, i) => ({ ...item, isGuarantee: index === i } )))}}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                  />
+                </div>
               </td>
               <td>
                 <div className="whitespace-nowrap cursor-pointer" onClick={() => setGoods(prev => prev.filter((_, i) => index !== i))}>
-                  {index > 0 && <><XMarkIcon className="w-4 h-4 text-red-700 inline" /> Удалить строку</>}
+                  <span className={`${goods.length > 1 ? '' : 'invisible'}`}><XMarkIcon className={`w-4 h-4 text-red-700 inline`} /> Удалить строку</span>
                 </div>
               </td>
             </tr>
@@ -296,27 +324,37 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
       </table>
       <div className="flex justify-between mb-5 items-center">
         <div className="font-bold">Сумма: {goods.reduce((acc, item)=> acc + Number(item.quantity) * Number(item.price), 0)}</div>
-        <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" onClick={() => { setGoods(prev => [...prev, { name: ' ', price: '0', quantity: '0' }])}} >Добавить строку</button>
+        <button
+          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+          onClick={() => { setGoods(prev => [...prev, { name: ' ', price: '0', quantity: '0', guarantee: 6, isGuarantee: false }])}} >
+          Добавить строку
+        </button>
       </div>
       {isSaved || isSaving && <div className="text-green-700 mb-5">{isSaving && 'Сохранение документа...'}{isSaved && 'Документ сохранен'}</div>}
       <div className="flex mb-5">
         <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5" onClick={print}>Распечатать</button>
         <PDFDownloadLink
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
-          document={ <PDF orgData={orgData} checkNumber={checkNumber} items={goods} useGuaranty={useGuaranty} data={data} />} fileName="order.pdf">
+          document={ <PDF orgData={orgData} checkNumber={checkNumber} items={goods} data={data} />} fileName="order.pdf">
           {({ blob, url, loading, error }) => loading ? 'Загрузка' : 'Сохранить в PDF'}
         </PDFDownloadLink>
       </div>
       {error && <div className="text-red-500">{error}</div>}
       <div className="flex items-center mb-10">
-        <input id="default-checkbox" type="checkbox" checked={showPreview} onChange={() => setShowPreview(p => !p)} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
+        <input
+          id="default-checkbox"
+          type="checkbox"
+          checked={showPreview}
+          onChange={() => setShowPreview(p => !p)}
+          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+        />
         <label htmlFor="default-checkbox" className="ms-2 text-sm font-medium">Предпросмотр</label>
       </div>
     </div>
-    <div className={showPreview ? '' : 'hidden'}>
+    {showPreview && <div className={showPreview ? '' : 'hidden'}>
       <PDFViewer innerRef={pdfRef} style={{ width: '100%', height: '400px' }}>
-        <PDF orgData={orgData} checkNumber={checkNumber} items={goods} useGuaranty={useGuaranty} data={data} />
+        <PDF orgData={orgData} checkNumber={checkNumber} items={goods} data={data} />
       </PDFViewer>
-    </div>
+    </div>}
   </main>
 }
