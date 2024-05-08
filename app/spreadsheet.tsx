@@ -8,17 +8,31 @@ import { useSearchParams } from 'next/navigation'
 import { Form } from "./form"
 
 export type RowData = {
-    name: string
-    price: string
-    quantity: string
+  name: string
+  price: string
+  quantity: string
 }
 
 export type RowsData = {
-    checkNumber: string
-    jobTitle: string,
-    currentWorker: string
-    currentOrg: string
-    rows: RowData[]
+  checkNumber: string
+  manager: string
+  seller: string
+  sellType: string
+  rows: RowData[]
+  paymentType: string
+  guarantee: string
+  clientName: string
+  clientPhone: string
+  clientSource: string
+}
+
+export type OrgData = {
+  managers: string[]
+  sellers: string[]
+  inn: string
+  address: string
+  phone: string
+  traffic: string[]
 }
 
 export const SpreadSheet = () => {
@@ -27,56 +41,79 @@ export const SpreadSheet = () => {
   const [isSaved, setIsSaved] = useState(false)
   const sheetObj = useRef<GoogleSpreadsheet | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [globalError, setGlobalError] = useState('')
   const searchParams = useSearchParams()
-  const spreadsheet = searchParams.get('spreadsheet')
+  const departmentId = searchParams.get('departmentId')
+  const [orgData, setOrgData] = useState<OrgData | null>(null)
   // '1B6dFoP6p6RjGED3LICf3CSSzPhs06KxC7EuD59dpLTY'
 
   useEffect(() => {
-    const setSheetObj = async () => {
-      try {
-        if (!spreadsheet) {
-          throw new Error('Нужно указать адрес таблицы')
-        }
+    const newJWT = new JWT({
+      email: process.env.NEXT_PUBLIC_CLIENT_EMAIL,
+      key: process.env.NEXT_PUBLIC_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
 
-        const newJWT = new JWT({
-          email: process.env.NEXT_PUBLIC_CLIENT_EMAIL,
-          key: process.env.NEXT_PUBLIC_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-        });
+    const getOrgData = async () => {
+      if (!departmentId) {
+        setGlobalError('Не указан департамент в URL')
+        return;
+      }
+      const departmentsDoc = new GoogleSpreadsheet('1nx1FJs4Ffex6sH936WkHmtEpeigUIg5RAf82PEstwzg', newJWT);
+      await departmentsDoc.loadInfo()
+      const departmentsSheet = departmentsDoc.sheetsByTitle['departments']
+      const departmentsRows = await departmentsSheet.getRows();
+      const departmentRow = departmentsRows.find(row => row.get('department') === departmentId)
 
-        const doc = new GoogleSpreadsheet(spreadsheet, newJWT);
-        await doc.loadInfo()
-        sheetObj.current = doc
+      if (!departmentRow) {
+        setGlobalError('Не найден текущий департамент в документе')
+        return;
+      }
 
-        const sheet = doc.sheetsByTitle['default']
-        const rows = await sheet.getRows();
-        const lastRow = rows[rows.length - 1]
-        if (lastRow) {
-          const date = dateFormat(new Date(), 'ddmmyy')
-          const checkValue = lastRow.get(sheet.headerValues[0])
+      const sheetId = departmentRow.get('sheetId')
 
-          if (!checkValue.match(/\d{6}-\d*/)) {
-            setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
-          } else {
-            const prevDate = checkValue.match(/\d{6}/)
-            console.log(prevDate[0], date)
-            if (prevDate && prevDate[0] && prevDate[0] === date) {
-              const checkNumber = checkValue.match(/-\d*$/)
-              if (checkNumber && checkNumber[0]) {
-                setCheckNumber(dateFormat(new Date(), 'ddmmyy') + String(checkNumber[0] - 1))
-              }
-            } else {
-              setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
+      const departmentInfoPage = departmentsDoc.sheetsByTitle[departmentId]
+      const departmentInfoRows = await departmentInfoPage.getRows()
+      const orgData = {
+        managers: departmentInfoRows.map(row => row.get('managers')).filter(Boolean),
+        sellers: departmentInfoRows.map(row => row.get('sellers')).filter(Boolean),
+        inn: departmentInfoRows[0].get('inn'),
+        address: departmentInfoRows[0].get('address'),
+        phone: departmentInfoRows[0].get('phone'),
+        traffic: departmentInfoRows.map(row => row.get('traffic')).filter(Boolean),
+      }
+
+      setOrgData(orgData)
+
+      const ordersDoc = new GoogleSpreadsheet(sheetId, newJWT);
+      await ordersDoc.loadInfo()
+      sheetObj.current = ordersDoc
+
+      const ordersSheet = ordersDoc.sheetsByTitle['default']
+      const departmentRows = await ordersSheet.getRows();
+      const lastRow = departmentRows[departmentRows.length - 1]
+      if (lastRow) {
+        const date = dateFormat(new Date(), 'ddmmyy')
+        const checkValue = lastRow.get(ordersSheet.headerValues[0])
+
+        if (!checkValue.match(/\d{6}-\d*/)) {
+          setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
+        } else {
+          const prevDate = checkValue.match(/\d{6}/)
+          if (prevDate && prevDate[0] && prevDate[0] === date) {
+            const checkNumber = checkValue.match(/-\d*$/)
+            if (checkNumber && checkNumber[0]) {
+              setCheckNumber(dateFormat(new Date(), 'ddmmyy') + String(checkNumber[0] - 1))
             }
+          } else {
+            setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
           }
         }
-      } catch (e) {
-        console.log(e)
       }
     }
 
-    setSheetObj()
-  }, [])
+    getOrgData()
+  }, [departmentId])
 
   const publishNewRow = async ({ currentOrg, jobTitle, currentWorker, rows, checkNumber }: RowsData) => {
     try {
@@ -98,7 +135,6 @@ export const SpreadSheet = () => {
     }
   }
 
-  console.log(checkNumber)
-
-  return checkNumber ? <Form initialCheckNumber={checkNumber} publishNewRow={publishNewRow} error={error} isSaving={isSaving} isSaved={isSaved} setSaved={setIsSaved} setError={setError} /> : null
+  if (globalError) return <h1 className="flex justify-center p-20">{globalError}</h1>
+  return checkNumber && orgData ? <Form initialCheckNumber={checkNumber} orgData={orgData} publishNewRow={publishNewRow} error={error} isSaving={isSaving} isSaved={isSaved} setSaved={setIsSaved} setError={setError} /> : null
 }
