@@ -1,7 +1,7 @@
 'use client'
 
 import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
-import { Organization } from '../form';
+import {Organization, PDFData} from '../form';
 import {OrgData, RowData} from '../spreadsheet';
 import { numberToText } from './numberToText';
 
@@ -40,11 +40,12 @@ interface Props {
   checkNumber: string
   items: RowData[]
   useGuaranty: boolean
-  workerName: string
+  data: PDFData
 }
 
-export const PDF = ({ orgData, checkNumber, items, useGuaranty, workerName }: Props) => {
+export const PDF = ({ orgData, checkNumber, items, useGuaranty, data }: Props) => {
   const {inn, address, phone} = orgData
+  const { manager, clientName, clientPhone } = data
   const date = new Date()
   const ruDate = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -59,9 +60,9 @@ export const PDF = ({ orgData, checkNumber, items, useGuaranty, workerName }: Pr
         <Image src="/header.png" cache={true} />
         <Text style={styles.address}>ИНН {inn} / {address} / Тел: {phone}</Text>
         <Text style={styles.title}>Товарный чек № {checkNumber} от {ruDate}</Text>
-        <View style={styles.table}>{table(items, "менеджер", workerName)}</View>
+        <View style={styles.table}>{table(items, "менеджер", manager)}</View>
         {useGuaranty && <View style={styles.section}>{guaranty()}</View>}
-        <View style={styles.section}>{clientSign()}</View>
+        <View style={styles.section}>{clientSign(clientName, clientPhone)}</View>
       </Page>
     </Document>
   </>
@@ -239,7 +240,7 @@ const manager = (jobTitle: string, workerName: string) => {
         <Text style={mStyles.underfield}>(подпись)</Text>
       </View>
       <View style={mStyles.block2}>
-        <Text style={mStyles.field}>{jobTitle}</Text>
+        <Text style={mStyles.field}>Менеджер</Text>
         <Text style={mStyles.underfield}>(должность)</Text>
       </View>
       <View style={mStyles.block3}>
@@ -305,13 +306,13 @@ const guaranty = () => {
   </View>
 }
 
-const clientSign = () => {
+const clientSign = (clientName: string, clientPhone: string) => {
   return (<View>
     <Text style={gstyles.paragraph1}>Товар технически исправен, дефектов не имеет. Товар мной осмотрен, проверен и получен</Text>
     <View style={gstyles.client}>
-      <Text>_________________________________/_______________________</Text>
+      <Text>{clientName} /_______________________/</Text>
       <Text style={gstyles.paragraph}>&nbsp; &nbsp; &nbsp;ФИО &nbsp; &nbsp;	&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Подпись &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</Text>
-      <Text>Мобильный номер телефона: __________________________</Text>
+      <Text>Мобильный номер телефона: {clientPhone}</Text>
     </View>
     <Text style={gstyles.recommendation}>Рекомендуется проводить сервисное обслуживание 1 раз в 6 месяцев!</Text>
   </View>)

@@ -5,6 +5,12 @@ import { XMarkIcon } from '@heroicons/react/24/solid'
 import { PDFViewer, PDFDownloadLink } from '@react-pdf/renderer';
 import dateFormat from 'dateformat';
 
+export type PDFData = {
+  manager: string,
+  clientName: string
+  clientPhone: string
+}
+
 export type Organization = {
   name: string
   id: string
@@ -103,6 +109,12 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
     }
     setSaved(false)
     setError(null)
+  }
+
+  const data = {
+    manager: currentManager,
+    clientName,
+    clientPhone,
   }
 
   return <main className="p-12">
@@ -291,7 +303,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
         <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5" onClick={print}>Распечатать</button>
         <PDFDownloadLink
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
-          document={ <PDF orgData={orgData} checkNumber={checkNumber} items={goods} useGuaranty={useGuaranty} workerName={currentManager} />} fileName="order.pdf">
+          document={ <PDF orgData={orgData} checkNumber={checkNumber} items={goods} useGuaranty={useGuaranty} data={data} />} fileName="order.pdf">
           {({ blob, url, loading, error }) => loading ? 'Загрузка' : 'Сохранить в PDF'}
         </PDFDownloadLink>
       </div>
@@ -303,7 +315,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
     </div>
     <div className={showPreview ? '' : 'hidden'}>
       <PDFViewer innerRef={pdfRef} style={{ width: '100%', height: '400px' }}>
-        <PDF orgData={orgData} checkNumber={checkNumber} items={goods} useGuaranty={useGuaranty} workerName={currentManager} />
+        <PDF orgData={orgData} checkNumber={checkNumber} items={goods} useGuaranty={useGuaranty} data={data} />
       </PDFViewer>
     </div>
   </main>

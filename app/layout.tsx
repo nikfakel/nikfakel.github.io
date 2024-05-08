@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-
 const a = require('url')
 // a.Url = a.URL
 a.URL = a.Url
@@ -20,7 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {children}
-      <div id="pdf"></div>
+        <div id="pdf"></div>
       </body>
     </html>
   );

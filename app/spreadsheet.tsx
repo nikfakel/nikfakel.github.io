@@ -45,9 +45,13 @@ export const SpreadSheet = () => {
   const searchParams = useSearchParams()
   const departmentId = searchParams.get('departmentId')
   const [orgData, setOrgData] = useState<OrgData | null>(null)
-  // '1B6dFoP6p6RjGED3LICf3CSSzPhs06KxC7EuD59dpLTY'
 
   useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_DEPARTMENTS_SPREADSHEET) {
+      setGlobalError('Не указан адрес таблицы с департаментами')
+      return
+    }
+
     const newJWT = new JWT({
       email: process.env.NEXT_PUBLIC_CLIENT_EMAIL,
       key: process.env.NEXT_PUBLIC_PRIVATE_KEY?.replace(/\\n/g, '\n'),
@@ -59,7 +63,7 @@ export const SpreadSheet = () => {
         setGlobalError('Не указан департамент в URL')
         return;
       }
-      const departmentsDoc = new GoogleSpreadsheet('1nx1FJs4Ffex6sH936WkHmtEpeigUIg5RAf82PEstwzg', newJWT);
+      const departmentsDoc = new GoogleSpreadsheet(process.env.NEXT_PUBLIC_DEPARTMENTS_SPREADSHEET || '', newJWT);
       await departmentsDoc.loadInfo()
       const departmentsSheet = departmentsDoc.sheetsByTitle['departments']
       const departmentsRows = await departmentsSheet.getRows();
