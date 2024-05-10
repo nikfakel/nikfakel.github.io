@@ -4,6 +4,7 @@ import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/
 import {PDFData} from '../form';
 import {OrgData, RowData} from '../spreadsheet';
 import { numberToText } from './numberToText';
+import hyphenation from "@/app/pdf/hyphenation";
 
 const styles = StyleSheet.create({
   page: {
@@ -61,13 +62,17 @@ export const PDF = ({ orgData, checkNumber, items, data }: Props) => {
     { src: '/Roboto/Roboto-Bold.ttf', fontStyle: 'normal', fontWeight: 'bold', },
   ] });
 
+  Font.registerHyphenationCallback((word) => {
+    return hyphenation(word);
+  })
+
   return <>
     <Document>
       <Page size="A4" style={styles.page}>
         {disableImage ? <View style={styles.padder}><Text style={styles.shopName}>Магазин игровых компьютеров &ldquo;Alef Computers&rdquo;</Text></View> : <Image src="/header.png" cache={true} />}
         <Text style={styles.address}>ИНН {inn} / {address} / Тел: {phone}</Text>
         <Text style={styles.title}>Товарный чек № {checkNumber} от {ruDate}</Text>
-        <View style={styles.table}>{table(items, "менеджер", manager)}</View>
+        <View style={styles.table}>{table(items, manager)}</View>
         {useGuarantee && <View style={styles.section}>{guaranty(guaranteeTime)}</View>}
         <View style={styles.section}>{clientSign(clientName, clientPhone, useGuarantee)}</View>
       </Page>
@@ -83,10 +88,14 @@ const t = StyleSheet.create({
   },
   cell1: {
     flex: '0 0 30px',
-    width: 'auto'
+    width: 'auto',
+    display: 'flex',
+    alignItems: 'stretch',
+    backgroundColor: 'red'
   },
   cell2: {
-    flex: '1 1 auto'
+    flex: '0 0 290px',
+    maxWidth: '290px'
   },
   cell3: {
     flex: '0 0 50px'
@@ -111,20 +120,22 @@ const t = StyleSheet.create({
   row: {
     display: 'flex',
     flexDirection: 'row',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    alignItems: 'stretch'
   },
   cellContent: {
     border: '0.5px solid #666',
-    textAlign: 'center',
     display: 'flex',
+    textAlign: 'center',
     alignItems: 'center',
-    padding: '3px 5px'
+    padding: '3px 5px',
+    backgroundColor: 'yellow'
   },
   cellContent2: {
     border: '0.5px solid #666',
     textAlign: 'right',
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'stretch',
     padding: '3px 5px'
   },
   sum: {
@@ -158,7 +169,7 @@ const t = StyleSheet.create({
   }
 })
 
-const table = (items: RowData[], jobTitle: string, workerName: string) => {
+const table = (items: RowData[], workerName: string) => {
   const summ = items.reduce((acc, item) => acc + Number(item.quantity) * Number(item.price), 0)
 
   return <>
@@ -195,7 +206,7 @@ const table = (items: RowData[], jobTitle: string, workerName: string) => {
       <Text>Всего наименований {items.length}, на сумму {summ} рублей 00 копеек</Text>
       {!!summ && <Text style={t.summLetters}>{numberToText()(String(summ) + '.00')} ноль копеек</Text>}
     </View>
-    {manager(jobTitle, workerName)}
+    {manager(workerName)}
   </>
 }
 
@@ -236,7 +247,7 @@ const mStyles = StyleSheet.create({
   }
 })
 
-const manager = (jobTitle: string, workerName: string) => {
+const manager = (workerName: string) => {
   return <>
     <View style={mStyles.wrapper}>
       <View style={mStyles.block0}>

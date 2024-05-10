@@ -381,6 +381,11 @@
   resolved "https://registry.yarnpkg.com/@types/dateformat/-/dateformat-5.0.2.tgz#876f06431ce6f411dbaca3f81d95a8784c9ab82a"
   integrity sha512-M95hNBMa/hnwErH+a+VOD/sYgTmo15OTYTM2Hr52/e0OdOuY+Crag+kd3/ioZrhg0WGbl9Sm3hR7UU+MH6rfOw==
 
+"@types/hyphen@^1.6.7":
+  version "1.6.7"
+  resolved "https://registry.yarnpkg.com/@types/hyphen/-/hyphen-1.6.7.tgz#f45fdfd3e991dd99a6d936231ce29aec68b25a3f"
+  integrity sha512-LsWduhqP4CG6myv2V5fXMvdQjESNbYQKCA74VoKlwvlqAWvJV6sREqUgTRpqYOe98vcNRSfvyi/zMzD7OGQ5KA==
+
 "@types/json5@^0.0.29":
   version "0.0.29"
   resolved "https://registry.yarnpkg.com/@types/json5/-/json5-0.0.29.tgz#ee28707ae94e11d2b827bcbe5270bcea7f3e71ee"
@@ -2065,7 +2070,7 @@ https-proxy-agent@^7.0.1:
     agent-base "^7.0.2"
     debug "4"
 
-hyphen@^1.6.4:
+hyphen@^1.10.4, hyphen@^1.6.4:
   version "1.10.4"
   resolved "https://registry.yarnpkg.com/hyphen/-/hyphen-1.10.4.tgz#ae16551b8a56ae7c34ffd4b98777221795e6c912"
   integrity sha512-SejXzIpv9gOVdDWXd4suM1fdF1k2dxZGvuTdkOVLoazYfK7O4DykIQbdrvuyG+EaTNlXAGhMndtKrhykgbt0gg==
