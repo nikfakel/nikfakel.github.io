@@ -47,12 +47,15 @@ export const SpreadSheet = () => {
   const searchParams = useSearchParams()
   const departmentId = searchParams.get('departmentId')
   const [orgData, setOrgData] = useState<OrgData | null>(null)
+  const [loadingStatus, setLoadingStatus] = useState('')
 
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_DEPARTMENTS_SPREADSHEET) {
       setGlobalError('Не указан адрес таблицы с департаментами')
       return
     }
+
+    setLoadingStatus("Подключение к серверу")
 
     const newJWT = new JWT({
       email: process.env.NEXT_PUBLIC_CLIENT_EMAIL,
@@ -69,63 +72,72 @@ export const SpreadSheet = () => {
     // }
 
     const getOrgData = async () => {
-      if (!departmentId) {
-        setGlobalError('Не указан департамент в URL')
-        return;
-      }
-      const departmentsDoc = new GoogleSpreadsheet(process.env.NEXT_PUBLIC_DEPARTMENTS_SPREADSHEET || '', newJWT);
-      await departmentsDoc.loadInfo()
-      const departmentsSheet = departmentsDoc.sheetsByTitle['departments']
-      const departmentsRows = await departmentsSheet.getRows();
-      const departmentRow = departmentsRows.find(row => row.get('department') === departmentId)
-
-      if (!departmentRow) {
-        setGlobalError('Не найден текущий департамент в документе')
-        return;
-      }
-
-      const sheetId = departmentRow.get('sheetId')
-
-      const departmentInfoPage = departmentsDoc.sheetsByTitle[departmentId]
-      const departmentInfoRows = await departmentInfoPage.getRows()
-      const orgData = {
-        managers: departmentInfoRows.map(row => row.get('managers')).filter(Boolean),
-        sellers: departmentInfoRows.map(row => row.get('sellers')).filter(Boolean),
-        inn: departmentInfoRows[0].get('inn'),
-        address: departmentInfoRows[0].get('address'),
-        phone: departmentInfoRows[0].get('phone'),
-        traffic: departmentInfoRows.map(row => row.get('traffic')).filter(Boolean),
-      }
-
-      setOrgData(orgData)
-
-      const ordersDoc = new GoogleSpreadsheet(sheetId, newJWT);
-      await ordersDoc.loadInfo()
-      sheetObj.current = ordersDoc
-
-      const ordersSheet = ordersDoc.sheetsByTitle['default']
-      const departmentRows = await ordersSheet.getRows();
-      const lastRow = departmentRows[departmentRows.length - 1]
-
-      if (lastRow) {
-        const date = dateFormat(new Date(), 'ddmmyy')
-        const checkValue = lastRow.get(ordersSheet.headerValues[0])
-
-        if (!checkValue.match(/\d{6}-\d*/)) {
-          setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
-        } else {
-          const prevDate = checkValue.match(/\d{6}/)
-          if (prevDate && prevDate[0] && prevDate[0] === date) {
-            const checkNumber = checkValue.match(/-\d*$/)
-            if (checkNumber && checkNumber[0]) {
-              setCheckNumber(dateFormat(new Date(), 'ddmmyy') + String(checkNumber[0] - 1))
-            }
-          } else {
-            setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
-          }
+      try {
+        setLoadingStatus("Загрузка основной информации...")
+        if (!departmentId) {
+          setGlobalError('Не указан департамент в URL')
+          return;
         }
-      } else {
-        setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
+        const departmentsDoc = new GoogleSpreadsheet(process.env.NEXT_PUBLIC_DEPARTMENTS_SPREADSHEET || '', newJWT);
+        await departmentsDoc.loadInfo()
+        const departmentsSheet = departmentsDoc.sheetsByTitle['departments']
+        const departmentsRows = await departmentsSheet.getRows();
+        const departmentRow = departmentsRows.find(row => row.get('department') === departmentId)
+
+        if (!departmentRow) {
+          setGlobalError('Не найден текущий департамент в документе')
+          return;
+        }
+
+        const sheetId = departmentRow.get('sheetId')
+
+        const departmentInfoPage = departmentsDoc.sheetsByTitle[departmentId]
+        const departmentInfoRows = await departmentInfoPage.getRows()
+        const orgData = {
+          managers: departmentInfoRows.map(row => row.get('managers')).filter(Boolean),
+          sellers: departmentInfoRows.map(row => row.get('sellers')).filter(Boolean),
+          inn: departmentInfoRows[0].get('inn'),
+          address: departmentInfoRows[0].get('address'),
+          phone: departmentInfoRows[0].get('phone'),
+          traffic: departmentInfoRows.map(row => row.get('traffic')).filter(Boolean),
+        }
+
+        setOrgData(orgData)
+
+        setLoadingStatus("Получение номера чека...")
+
+        const ordersDoc = new GoogleSpreadsheet(sheetId, newJWT);
+        await ordersDoc.loadInfo()
+        sheetObj.current = ordersDoc
+
+        const ordersSheet = ordersDoc.sheetsByTitle['default']
+        const departmentRows = await ordersSheet.getRows();
+        const lastRow = departmentRows[departmentRows.length - 1]
+
+        if (lastRow) {
+          const date = dateFormat(new Date(), 'ddmmyy')
+          const checkValue = lastRow.get(ordersSheet.headerValues[0])
+
+          if (!checkValue.match(/\d{6}-\d*/)) {
+            setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
+          } else {
+            const prevDate = checkValue.match(/\d{6}/)
+            if (prevDate && prevDate[0] && prevDate[0] === date) {
+              const checkNumber = checkValue.match(/-\d*$/)
+              if (checkNumber && checkNumber[0]) {
+                setCheckNumber(dateFormat(new Date(), 'ddmmyy') + String(checkNumber[0] - 1))
+              }
+            } else {
+              setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
+            }
+          }
+        } else {
+          setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
+        }
+      } catch (e) {
+        setGlobalError('Что-то пошло не так')
+      } finally {
+        setLoadingStatus('')
       }
     }
 
@@ -191,5 +203,6 @@ export const SpreadSheet = () => {
   }
 
   if (globalError) return <h1 className="flex justify-center p-20">{globalError}</h1>
+  if (loadingStatus) return <h1 className="flex justify-center p-20">{loadingStatus}</h1>
   return checkNumber && orgData ? <Form initialCheckNumber={checkNumber} orgData={orgData} publishNewRow={publishNewRow} error={error} isSaving={isSaving} isSaved={isSaved} setSaved={setIsSaved} setError={setError} /> : null
 }

@@ -33,12 +33,12 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
   const [ prevCheckNumber, setPrevCheckNumber] = useState<string>(initialCheckNumber)
   const [ currentManager, setCurrentManager] = useState(orgData.managers[0])
   const [ currentSeller, setCurrentSeller] = useState(orgData.sellers[0])
+  const [ secondSeller, setSecondSeller] = useState(orgData.sellers[0])
   const [ useGuarantee, setUseGuarantee] = useState(true)
   const [ showPreview, setShowPreview] = useState(false)
   const pdfRef = useRef<HTMLIFrameElement>(null)
   const [goods, setGoods] = useState([
-    {name: 'greener ', price: '1', quantity: '2', guarantee: 6, isGuarantee: false },
-    {name: 'greener 2', price: '1', quantity: '4', guarantee: 12, isGuarantee: true },
+    {name: ' ', price: '0', quantity: '0', guarantee: 6, isGuarantee: false },
   ])
 
   const [isSell, setIsSell] = useState(true)
@@ -202,8 +202,8 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
             id="managerName"
             name="managerName"
             className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10 mb-1"
-            value={currentSeller}
-            onChange={(e) => setCurrentSeller(e.target.value)} >
+            value={secondSeller}
+            onChange={(e) => setSecondSeller(e.target.value)} >
             {orgData.sellers.map((seller) => <option key={seller} value={seller}>{seller}</option>)}
           </select>}
         </div>
@@ -283,10 +283,14 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
               <div className="mr-5">{payment.type}</div>
               <div className="ml-auto mr-5">
                 <input
-                  className="w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
-                  type="text"
+                  className="w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-2"
+                  type="number"
                   value={payment.sum}
-                  onChange={e => setPayments(p => p.map((item, i) => i === index ? ({ ...item, sum: Number(e.target.value) }) : item))}
+                  onChange={e => setPayments(p => p.map((item, i) => {
+                    if (i !== index) return item
+                    const newNumber = e.target.value.charAt(0) === '0' ? e.target.value.slice(1) : e.target.value
+                    return { ...item, sum: Number(newNumber) }
+                  }))}
                 />
               </div>
               <div className="flex items-center cursor-pointer" onClick={() => handleRemovePayment(index)}><XMarkIcon className={`w-4 h-4 text-red-700 inline`} /> Удалить</div>

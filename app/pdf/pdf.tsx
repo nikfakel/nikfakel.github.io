@@ -91,7 +91,6 @@ const t = StyleSheet.create({
     width: 'auto',
     display: 'flex',
     alignItems: 'stretch',
-    backgroundColor: 'red'
   },
   cell2: {
     flex: '0 0 290px',
@@ -129,7 +128,6 @@ const t = StyleSheet.create({
     textAlign: 'center',
     alignItems: 'center',
     padding: '3px 5px',
-    backgroundColor: 'yellow'
   },
   cellContent2: {
     border: '0.5px solid #666',
