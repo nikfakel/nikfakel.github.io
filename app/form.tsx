@@ -34,16 +34,18 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
   const [ currentManager, setCurrentManager] = useState(orgData.managers[0])
   const [ currentSeller, setCurrentSeller] = useState(orgData.sellers[0])
   const [ useGuarantee, setUseGuarantee] = useState(true)
-  const [ showPreview, setShowPreview] = useState(true)
+  const [ showPreview, setShowPreview] = useState(false)
   const pdfRef = useRef<HTMLIFrameElement>(null)
-  const [goods, setGoods] = useState([{name: ' ', price: '0', quantity: '0', guarantee: 6, isGuarantee: false }])
+  const [goods, setGoods] = useState([
+    {name: 'greener ', price: '1', quantity: '2', guarantee: 6, isGuarantee: false },
+    {name: 'greener 2', price: '1', quantity: '4', guarantee: 12, isGuarantee: true },
+  ])
 
   const [isSell, setIsSell] = useState(true)
   const [isIssuance, setIsIssuance] = useState(false)
   const [isPrepayment, setIsPrepayment] = useState(false)
 
   const [isPairSell, setIsPairSell] = useState(false)
-  const [paymentType, setPaymentType] = useState('')
 
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
@@ -89,29 +91,6 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
     setPayments(p => p.filter((item, i) => index !== i));
   }
 
-  const saveRows = async () => {
-    const sellType = isSell ? 'Продажа' : isPrepayment ? 'Предоплата' : isIssuance ? `Выдача ${prevCheckNumber}` : ''
-    const paymentType = ''
-    const guarantyTyme = ''
-
-    try {
-      await publishNewRow({
-        checkNumber,
-        manager: currentManager,
-        seller: currentSeller,
-        sellType: sellType,
-        paymentType: paymentType,
-        guarantee: guarantyTyme,
-        clientName,
-        clientPhone,
-        clientSource,
-        rows: goods.map(row => ({...row, price: row.price, quantity: row.quantity}))
-      })
-    } catch (e) {
-      console.log(e)
-    }
-  }
-
   const resetState = () => {
     setGoods([{name: ' ', price: '0', quantity: '0', guarantee: 0, isGuarantee: false }])
     const checkNumberVal = checkNumber.match(/-\d*$/)
@@ -122,17 +101,39 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
     setError(null)
   }
 
-  const data = {
+  const guaranteeResult = goods.reduce((acc, item) => item.isGuarantee ? item.guarantee : acc, 0)
+  const paymentSum = payments.reduce((acc, item) => acc + item.sum, 0)
+  const checkSum = goods.reduce((acc, item)=> acc + Number(item.quantity) * Number(item.price), 0)
+
+  const saveRows = async () => {
+    const sellType = isSell ? 'Продажа' : isPrepayment ? 'Предоплата' : isIssuance ? `Выдача ${prevCheckNumber}` : ''
+    const paymentType = payments.reduce((acc, item) => acc + item.sum + ' - ' + item.type + '\r\n', '')
+
+    try {
+      publishNewRow({
+        checkNumber,
+        manager: currentManager,
+        seller: currentSeller,
+        sellType,
+        paymentType,
+        clientName,
+        clientPhone,
+        clientSource,
+        rows: goods.map(row => ({...row, price: row.price, quantity: row.quantity}))
+      })
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
+  const data: PDFData = {
     manager: currentManager,
     clientName,
     clientPhone,
     useGuarantee,
     disableImage,
-    guaranteeTime: goods.reduce((acc, item) => item.isGuarantee ? item.guarantee : acc, 0)
+    guaranteeTime: guaranteeResult
   }
-
-  const paymentSum = payments.reduce((acc, item) => acc + item.sum, 0)
-  const checkSum = goods.reduce((acc, item)=> acc + Number(item.quantity) * Number(item.price), 0)
 
   return <main className="p-12">
     <div className="flex justify-between">
@@ -257,7 +258,6 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
         <select
           disabled={isPaidBefore}
           className="w-48 mr-5 rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-1 pr-0 mb-5"
-          value={paymentType}
           onChange={ e => handlePaymentType(e.currentTarget.value)}
         >
           <option key="choose" value="">Выбрать</option>
@@ -321,8 +321,8 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
               <td className="whitespace-nowrap py-2 font-medium text-gray-900">
                 <input
                   type="text"
-                  // value={item.name}
-                  value="greenererer greenererer greenererer greenererer greenererer greenererer greenererer трабахардорес1 трабахардорес2 трабахардорес3 трабахардорес4 трабахардорес5 трабахардорес6 трабахардорес7 трабахардорес8 трабахардорес9 трабахардорес10 "
+                  value={item.name}
+                  // value="greenererer "
                   onChange={ e => setGoods(prev => prev.map((item, i) => {
                     if (i !== index) return item
                     const newNumber = e.target.value.charAt(0) === '0' ? e.target.value.slice(1) : e.target.value

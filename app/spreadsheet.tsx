@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import { GoogleSpreadsheet } from "google-spreadsheet"
+import {GoogleSpreadsheet, GoogleSpreadsheetWorksheet} from "google-spreadsheet"
+import {google, sheets_v4} from 'googleapis'
 import { JWT } from "google-auth-library"
 import dateFormat from "dateformat";
 import { useSearchParams } from 'next/navigation'
@@ -11,6 +12,7 @@ export type RowData = {
   name: string
   price: string
   quantity: string
+  guarantee: number
 }
 
 export type RowsData = {
@@ -20,7 +22,6 @@ export type RowsData = {
   sellType: string
   rows: RowData[]
   paymentType: string
-  guarantee: string
   clientName: string
   clientPhone: string
   clientSource: string
@@ -40,6 +41,8 @@ export const SpreadSheet = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const sheetObj = useRef<GoogleSpreadsheet | null>(null)
+  const gSheetObj = useRef<sheets_v4.Sheets | null>(null)
+  const [lastRowA1, setLastRowA1] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [globalError, setGlobalError] = useState('')
   const searchParams = useSearchParams()
@@ -57,6 +60,14 @@ export const SpreadSheet = () => {
       key: process.env.NEXT_PUBLIC_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
+
+    // const getOrgData = async () => {
+    //   const gSheets = google.sheets({version: "v4", auth: process.env.NEXT_PUBLIC_SPREADSHEET_GOOGLE_API_KEY });
+    //   console.log(gSheets)
+    //   const departmentsDoc = await gSheets.spreadsheets.get({ spreadsheetId: process.env.NEXT_PUBLIC_DEPARTMENTS_SPREADSHEET })
+    //   console.log(departmentsDoc)
+    //   // departmentsDoc.data.sheets
+    // }
 
     const getOrgData = async () => {
       if (!departmentId) {
@@ -96,6 +107,7 @@ export const SpreadSheet = () => {
       const ordersSheet = ordersDoc.sheetsByTitle['default']
       const departmentRows = await ordersSheet.getRows();
       const lastRow = departmentRows[departmentRows.length - 1]
+
       if (lastRow) {
         const date = dateFormat(new Date(), 'ddmmyy')
         const checkValue = lastRow.get(ordersSheet.headerValues[0])
@@ -113,24 +125,64 @@ export const SpreadSheet = () => {
             setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
           }
         }
+      } else {
+        setCheckNumber(dateFormat(new Date(), 'ddmmyy') + '-1')
       }
     }
 
     getOrgData()
   }, [departmentId])
 
-  const publishNewRow = async ({ currentOrg, jobTitle, currentWorker, rows, checkNumber }: RowsData) => {
+  const mergeCells = async (sheet: GoogleSpreadsheetWorksheet, start: number, end: number, column: number, value: string) => {
+    await sheet.mergeCells({ startColumnIndex: column, endColumnIndex: column + 1, startRowIndex: start, endRowIndex: end, sheetId: sheet.sheetId })
+    const cell = sheet.getCell(start, column)
+    cell.value = value
+    await sheet.saveUpdatedCells()
+    await sheet.loadCells()
+  }
+
+  const publishNewRow = async ({ checkNumber, manager, seller, sellType, rows, paymentType, clientName, clientPhone, clientSource }: RowsData) => {
     try {
+      if (!sheetObj?.current) return
+
       setIsSaving(true)
 
-      if (sheetObj && sheetObj.current) {
-        const sheet = sheetObj.current.sheetsByTitle['default']
-        const date = dateFormat(new Date(), 'mm-dd-yy')
-        const time = dateFormat(new Date(), 'hh:mm')
-        const sheetRows = rows.map(row => ({ "Номер чека": checkNumber, 'Продавец': currentWorker, "Должность": jobTitle, "Дата": date, "Время": time, "Наименование": row.name, "Цена": row.price, "Количество": row.quantity, "Сумма": Number(row.price) * Number(row.quantity), }))
-        await sheet.addRows(sheetRows)
-        setIsSaved(true)
-      }
+      const sheet = sheetObj.current.sheetsByTitle['default']
+      // sheet._spreadsheet._makeBatchUpdateRequest()
+      const currentSheetRows = await sheet.getRows()
+
+      const sheetRows = rows.map(row => ({
+        "Наименование": row.name,
+        "Цена": row.price,
+        "Количество": row.quantity,
+        "Сумма": Number(row.price) * Number(row.quantity),
+        "Гарантия": String(row.guarantee) + ' мес',
+      }))
+
+      await sheet.addRows(sheetRows)
+
+      const start = currentSheetRows.length + 1
+      const end = start + rows.length
+
+      await mergeCells(sheet, start, end, 0, checkNumber)
+      await mergeCells(sheet, start, end, 1, manager)
+      await mergeCells(sheet, start, end, 2, sellType)
+
+      const sum = rows.reduce((acc, item) => acc + Number(item.price) * Number(item.quantity), 0)
+      await mergeCells(sheet, start, end, 7, String(sum))
+      const date = dateFormat(new Date(), 'mm-dd-yy')
+      await mergeCells(sheet, start, end, 8, date)
+      const time = dateFormat(new Date(), 'hh:mm')
+
+      await mergeCells(sheet, start, end, 9, time)
+      await mergeCells(sheet, start, end, 10, paymentType)
+      await mergeCells(sheet, start, end, 12, clientName)
+      await mergeCells(sheet, start, end, 13, clientPhone)
+      await mergeCells(sheet, start, end, 14, clientSource)
+      await mergeCells(sheet, start, end, 15, seller)
+
+      await sheet.saveUpdatedCells();
+      setIsSaved(true)
     } catch(e) {
       setError('Не удалось сохранить новый чек')
       console.log(e);
