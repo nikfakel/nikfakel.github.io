@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import {GoogleSpreadsheet, GoogleSpreadsheetWorksheet} from "google-spreadsheet"
-import {google, sheets_v4} from 'googleapis'
 import { JWT } from "google-auth-library"
 import dateFormat from "dateformat";
 import { useSearchParams } from 'next/navigation'
@@ -41,7 +40,7 @@ export const SpreadSheet = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const sheetObj = useRef<GoogleSpreadsheet | null>(null)
-  const gSheetObj = useRef<sheets_v4.Sheets | null>(null)
+  // const gSheetObj = useRef<sheets_v4.Sheets | null>(null)
   const [lastRowA1, setLastRowA1] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [globalError, setGlobalError] = useState('')
