@@ -16,7 +16,7 @@ export type RowsData = {
 }
 
 export const SpreadSheetW = () => {
-  return <Suspense fallback={<div>Loading...</div>}>
+  return <Suspense fallback={<h1 className="flex justify-center p-20">Загрузка приложения...</h1>}>
     <SpreadSheet />
   </Suspense>
 }
