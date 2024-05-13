@@ -40,8 +40,6 @@ export const SpreadSheet = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const sheetObj = useRef<GoogleSpreadsheet | null>(null)
-  // const gSheetObj = useRef<sheets_v4.Sheets | null>(null)
-  const [lastRowA1, setLastRowA1] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [globalError, setGlobalError] = useState('')
   const searchParams = useSearchParams()
@@ -62,14 +60,6 @@ export const SpreadSheet = () => {
       key: process.env.NEXT_PUBLIC_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
-
-    // const getOrgData = async () => {
-    //   const gSheets = google.sheets({version: "v4", auth: process.env.NEXT_PUBLIC_SPREADSHEET_GOOGLE_API_KEY });
-    //   console.log(gSheets)
-    //   const departmentsDoc = await gSheets.spreadsheets.get({ spreadsheetId: process.env.NEXT_PUBLIC_DEPARTMENTS_SPREADSHEET })
-    //   console.log(departmentsDoc)
-    //   // departmentsDoc.data.sheets
-    // }
 
     const getOrgData = async () => {
       try {
@@ -144,12 +134,22 @@ export const SpreadSheet = () => {
     getOrgData()
   }, [departmentId])
 
-  const mergeCells = async (sheet: GoogleSpreadsheetWorksheet, start: number, end: number, column: number, value: string) => {
-    await sheet.mergeCells({ startColumnIndex: column, endColumnIndex: column + 1, startRowIndex: start, endRowIndex: end, sheetId: sheet.sheetId })
-    const cell = sheet.getCell(start, column)
-    cell.value = value
-    await sheet.saveUpdatedCells()
-    await sheet.loadCells()
+  const mergeCells = async (sheet: GoogleSpreadsheetWorksheet, start: number, end: number, arr:{ column: number, value: string }[]) => {
+    const requests = arr.reduce((acc: any[], item) => {
+      const cell = sheet.getCell(start, item.column)
+      cell.value = item.value
+      acc.push(cell._getUpdateRequest())
+      acc.push({
+        "mergeCells": {
+          range: { startColumnIndex: item.column, endColumnIndex: item.column + 1, startRowIndex: start, endRowIndex: end, sheetId: sheet.sheetId },
+          mergeType: 'MERGE_ALL'
+        }
+      })
+
+      return acc;
+    }, [])
+
+    await sheet._spreadsheet._makeBatchUpdateRequest(requests)
   }
 
   const publishNewRow = async ({ checkNumber, manager, seller, sellType, rows, paymentType, clientName, clientPhone, clientSource }: RowsData) => {
@@ -159,7 +159,6 @@ export const SpreadSheet = () => {
       setIsSaving(true)
 
       const sheet = sheetObj.current.sheetsByTitle['default']
-      // sheet._spreadsheet._makeBatchUpdateRequest()
       const currentSheetRows = await sheet.getRows()
 
       const sheetRows = rows.map(row => ({
@@ -171,28 +170,29 @@ export const SpreadSheet = () => {
       }))
 
       await sheet.addRows(sheetRows)
+      await sheet.loadCells()
 
       const start = currentSheetRows.length + 1
       const end = start + rows.length
 
-      await mergeCells(sheet, start, end, 0, checkNumber)
-      await mergeCells(sheet, start, end, 1, manager)
-      await mergeCells(sheet, start, end, 2, sellType)
-
       const sum = rows.reduce((acc, item) => acc + Number(item.price) * Number(item.quantity), 0)
-      await mergeCells(sheet, start, end, 7, String(sum))
       const date = dateFormat(new Date(), 'mm-dd-yy')
-      await mergeCells(sheet, start, end, 8, date)
       const time = dateFormat(new Date(), 'hh:mm')
 
-      await mergeCells(sheet, start, end, 9, time)
-      await mergeCells(sheet, start, end, 10, paymentType)
-      await mergeCells(sheet, start, end, 12, clientName)
-      await mergeCells(sheet, start, end, 13, clientPhone)
-      await mergeCells(sheet, start, end, 14, clientSource)
-      await mergeCells(sheet, start, end, 15, seller)
+      await mergeCells(sheet, start, end,[
+        { column: 0, value: checkNumber },
+        { column: 1, value: manager },
+        { column: 2, value: sellType },
+        { column: 7, value: String(sum)},
+        { column: 8, value: date },
+        { column: 9, value: time },
+        { column: 10, value: paymentType },
+        { column: 12, value: clientName },
+        { column: 13, value: clientPhone },
+        { column: 14, value: clientSource },
+        { column: 15, value: seller },
+      ])
 
-      await sheet.saveUpdatedCells();
       setIsSaved(true)
     } catch(e) {
       setError('Не удалось сохранить новый чек')
