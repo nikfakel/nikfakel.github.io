@@ -348,11 +348,11 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
                 <input
                   className="w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-2"
                   type="number"
-                  value={payment.sum}
+                  min={0}
+                  value={String(payment.sum).charAt(0) === '0' ? String(payment.sum).slice(1) : payment.sum}
                   onChange={e => setPayments(p => p.map((item, i) => {
                     if (i !== index) return item
-                    const newNumber = e.target.value.charAt(0) === '0' ? e.target.value.slice(1) : e.target.value
-                    return { ...item, sum: Number(newNumber) }
+                    return { ...item, sum: Number(e.target.value) }
                   }))}
                 />
               </div>
