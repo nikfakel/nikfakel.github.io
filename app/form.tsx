@@ -30,7 +30,7 @@ const paymentTypes = ["Наличные", "Перевод на карту", "Т�
 
 export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSaving, isSaved, setSaved, setError }: Props) => {
   const [ checkNumber, setCheckNumber] = useState<string>(initialCheckNumber)
-  const [ prevCheckNumber, setPrevCheckNumber] = useState<string>(initialCheckNumber)
+  const [ prevCheckNumber, setPrevCheckNumber] = useState<string>('')
   const [ currentManager, setCurrentManager] = useState(orgData.managers[0])
   const [ currentSeller, setCurrentSeller] = useState(orgData.sellers[0])
   const [ secondSeller, setSecondSeller] = useState(orgData.sellers[0])
@@ -93,10 +93,21 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
 
   const resetState = () => {
     setGoods([{name: ' ', price: '0', quantity: '0', guarantee: 0, isGuarantee: false }])
+    setPayments([])
+
+    setSell()
+    setClientName('')
+    setClientPhone('')
+    setClientSource('')
+    setIsPaidBefore(false)
+    setIsPairSell(false)
+    setUseGuarantee(true)
+
     const checkNumberVal = checkNumber.match(/-\d*$/)
     if (checkNumberVal && checkNumberVal[0]) {
       setCheckNumber(dateFormat(new Date(), 'ddmmyy') + String(Number(checkNumberVal[0]) - 1))
     }
+
     setSaved(false)
     setError(null)
   }
@@ -106,6 +117,10 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
   const checkSum = goods.reduce((acc, item)=> acc + Number(item.quantity) * Number(item.price), 0)
 
   const saveRows = async () => {
+    if (isSaving || isSaved) {
+      return
+    }
+
     const sellType = isSell ? 'Продажа' : isPrepayment ? 'Предоплата' : isIssuance ? `Выдача ${prevCheckNumber}` : ''
     const paymentType = payments.reduce((acc, item) => acc + item.sum + ' - ' + item.type + '\r\n', '')
 
@@ -119,6 +134,9 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
         clientName,
         clientPhone,
         clientSource,
+        prevCheckNumber,
+        isPairSell,
+        secondSeller,
         rows: goods.map(row => ({...row, price: row.price, quantity: row.quantity}))
       })
     } catch (e) {
@@ -147,26 +165,54 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
     <div className="flex items-center mb-5">
       <div className="font-bold mr-5">Чек №</div>
       <div className="mr-5">
-        <input disabled={true} className="mt-1.5 rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10" type='text' value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} />
+        <input
+          disabled={true}
+          className="mt-1.5 rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
+          type='text'
+          value={checkNumber}
+        />
       </div>
       {isSaved && <div>Чек был сохранен. <span onClick={resetState} className="border-b border-dotted border-b-[grey] cursor-pointer">Создать новый</span></div>}
     </div>
     <div className="flex mb-5 items-center">
       <div className="mr-10 flex items-center">
-        <input id="prodazha" type="checkbox" checked={isSell} onChange={setSell} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
+        <input
+          id="prodazha"
+          type="checkbox"
+          checked={isSell}
+          disabled={isSaved || isSaving}
+          onChange={setSell}
+          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+        />
         <label htmlFor="prodazha" className="ms-2 text-sm font-medium">Продажа</label>
       </div>
       <div className="mr-10 flex items-center">
-        <input id="predoplata" type="checkbox" checked={isPrepayment} onChange={setPrepayment} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
+        <input
+          id="predoplata"
+          type="checkbox"
+          checked={isPrepayment}
+          disabled={isSaved || isSaving}
+          onChange={setPrepayment}
+          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+        />
         <label htmlFor="predoplata" className="ms-2 text-sm font-medium">Предоплата</label>
       </div>
       <div className="flex items-center">
-        <input id="vidacha" type="checkbox" checked={isIssuance} onChange={setIssuance} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
+        <input
+          id="vidacha"
+          type="checkbox"
+          checked={isIssuance}
+          disabled={isSaved || isSaving}
+          onChange={setIssuance}
+          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+        />
         <label htmlFor="vidacha" className="ms-2 text-sm font-medium mr-5">Выдача</label>
         {isIssuance && <input
           type="text"
+          value={prevCheckNumber}
+          disabled={isSaved || isSaving}
           className="mt-1.5 rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
-          value={prevCheckNumber} onChange={(e) => setPrevCheckNumber(e.currentTarget.value)}
+          onChange={(e) => setPrevCheckNumber(e.currentTarget.value)}
         />}
       </div>
     </div>
@@ -176,9 +222,10 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
           <label htmlFor="managerName" className="block text-sm font-medium text-gray-900 text-bold">Менеджер</label>
           <select
             id="managerName"
+            value={currentManager}
+            disabled={isSaved || isSaving}
             name="managerName"
             className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10 mb-1"
-            value={currentManager}
             onChange={(e) => setCurrentManager(e.target.value)} >
             {orgData.managers.map((manager) => <option key={manager} value={manager}>{manager}</option>)}
           </select>
@@ -190,19 +237,31 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
           <select
             id="managerName"
             name="managerName"
-            className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10 mb-1"
             value={currentSeller}
+            disabled={isSaved || isSaving}
+            className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10 mb-1"
             onChange={(e) => setCurrentSeller(e.target.value)} >
             {orgData.sellers.map((seller) => <option key={seller} value={seller}>{seller}</option>)}
           </select>
         </div>
         <div className="mr-10 self-start">
-          <label htmlFor="managerName" className="text-sm font-medium text-gray-900 text-bold flex items-center">Парная продажа <input id="pair-sell" type="checkbox" checked={isPairSell} onChange={() => setIsPairSell(p => !p)} className="ml-5 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/></label>
+          <label htmlFor="managerName" className="text-sm font-medium text-gray-900 text-bold flex items-center">
+            Парная продажа
+            <input
+              id="pair-sell"
+              type="checkbox"
+              checked={isPairSell}
+              disabled={isSaved || isSaving}
+              onChange={() => setIsPairSell(p => !p)}
+              className="ml-5 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+            />
+          </label>
           {isPairSell && <select
             id="managerName"
             name="managerName"
-            className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10 mb-1"
             value={secondSeller}
+            disabled={isSaved || isSaving}
+            className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10 mb-1"
             onChange={(e) => setSecondSeller(e.target.value)} >
             {orgData.sellers.map((seller) => <option key={seller} value={seller}>{seller}</option>)}
           </select>}
@@ -212,11 +271,11 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
 
     <div className="flex items-center mb-10">
       <div className="flex items-center mr-10">
-        <input id="guarantee" type="checkbox" checked={useGuarantee} onChange={() => setUseGuarantee(p => !p)} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
+        <input id="guarantee" type="checkbox" checked={useGuarantee} disabled={isSaved || isSaving} onChange={() => setUseGuarantee(p => !p)} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
         <label htmlFor="guarantee" className="ms-2 text-sm font-medium">Добавить гарантию</label>
       </div>
       <div className="flex items-center">
-        <input id="disable-image" type="checkbox" checked={disableImage} onChange={() => setDisableImage(p => !p)} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
+        <input id="disable-image" type="checkbox" checked={disableImage} disabled={isSaved || isSaving} onChange={() => setDisableImage(p => !p)} className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"/>
         <label htmlFor="disable-image" className="ms-2 text-sm font-medium">Отключить фон</label>
       </div>
     </div>
@@ -227,6 +286,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
         <input
           type="text"
           value={clientName}
+          disabled={isSaved || isSaving}
           onChange={ e => setClientName(e.currentTarget.value)}
           placeholder="ФИО"
           className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
@@ -236,6 +296,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
         <input
           type="text"
           value={clientPhone}
+          disabled={isSaved || isSaving}
           onChange={ e => setClientPhone(e.currentTarget.value)}
           placeholder="Телефон"
           className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
@@ -244,6 +305,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
       <div className="mr-10">
         <select
           value={clientSource}
+          disabled={isSaved || isSaving}
           onChange={ e => setClientSource(e.currentTarget.value)}
           className="mt-1.5 w-full rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-3 pr-10"
         >
@@ -256,7 +318,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
       <div className="mr-10 mt-2">Оплата</div>
       <div className="mr-10">
         <select
-          disabled={isPaidBefore}
+          disabled={isPaidBefore || isSaved || isSaving}
           className="w-48 mr-5 rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-1 pr-0 mb-5"
           onChange={ e => handlePaymentType(e.currentTarget.value)}
         >
@@ -270,6 +332,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
             id="default-checkbox"
             type="checkbox"
             checked={isPaidBefore}
+            disabled={isSaved || isSaving}
             onChange={() => setIsPaidBefore(p => !p)}
             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
           />
@@ -326,7 +389,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
                 <input
                   type="text"
                   value={item.name}
-                  // value="greenererer "
+                  disabled={isSaved || isSaving}
                   onChange={ e => setGoods(prev => prev.map((item, i) => {
                     if (i !== index) return item
                     const newNumber = e.target.value.charAt(0) === '0' ? e.target.value.slice(1) : e.target.value
@@ -340,6 +403,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
                   type="number"
                   min={0}
                   value={item.quantity}
+                  disabled={isSaved || isSaving}
                   onChange={ e => setGoods(prev => prev.map((item, i) => {
                     if (i !== index) return item
                     const newNumber = e.target.value.charAt(0) === '0' ? e.target.value.slice(1) : e.target.value
@@ -352,6 +416,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
                 <input
                   type="number"
                   value={item.price}
+                  disabled={isSaved || isSaving}
                   onChange={ e => setGoods(prev => {
                     return prev.map((item, i) => {
                       if (i !== index) return item
@@ -370,6 +435,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
                   <select
                     className="w-20 mr-5 rounded-lg border border-gray-300 text-gray-700 sm:text-sm py-2 pl-1 pr-0"
                     value={item.guarantee}
+                    disabled={isSaved || isSaving}
                     onChange={ e => setGoods(prev => {
                       return prev.map((item, i) => {
                         if (i !== index) return item
@@ -382,13 +448,17 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
                   <input
                     type="checkbox"
                     checked={item.isGuarantee}
+                    disabled={isSaved || isSaving}
                     onChange={() => {setGoods(prev => prev.map((item, i) => ({ ...item, isGuarantee: index === i } )))}}
                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
                   />
                 </div>
               </td>
               <td>
-                <div className="whitespace-nowrap cursor-pointer" onClick={() => setGoods(prev => prev.filter((_, i) => index !== i))}>
+                <div className="whitespace-nowrap cursor-pointer" onClick={() => {
+                  if (isSaving || isSaving) return
+                  setGoods(prev => prev.filter((_, i) => index !== i)) }
+                }>
                   <span className={`${goods.length > 1 ? '' : 'invisible'}`}><XMarkIcon className={`w-4 h-4 text-red-700 inline`} /> Удалить строку</span>
                 </div>
               </td>
@@ -399,21 +469,36 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
       <div className="flex justify-between mb-5 items-center">
         <div className="font-bold">Сумма: {checkSum}</div>
         <button
+          disabled={isSaved || isSaving}
           className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
           onClick={() => { setGoods(prev => [...prev, { name: ' ', price: '0', quantity: '0', guarantee: 6, isGuarantee: false }])}} >
           Добавить строку
         </button>
       </div>
-      {isSaved || isSaving && <div className="text-green-700 mb-5">{isSaving && 'Сохранение документа...'}{isSaved && 'Документ сохранен'}</div>}
-      <div className="flex mb-5">
-        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5" onClick={print}>Распечатать</button>
-        <PDFDownloadLink
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
-          document={ <PDF orgData={orgData} checkNumber={checkNumber} items={goods} data={data} />} fileName="order.pdf">
-          {({ blob, url, loading, error }) => loading ? 'Загрузка' : 'Сохранить в PDF'}
-        </PDFDownloadLink>
-      </div>
       {error && <div className="text-red-500">{error}</div>}
+      <div className="flex mb-5 items-center">
+        <button
+          disabled={isSaving}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
+          onClick={print}>Распечатать</button>
+        <PDFDownloadLink
+          onClick={(e) => {
+            if (isSaving) {
+              e.preventDefault()
+            }
+
+            if (!isSaved && !isSaving) {
+              saveRows()
+            }
+          }}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
+          document={ <PDF orgData={orgData} checkNumber={checkNumber} items={goods} data={data} />}
+          fileName="order.pdf">
+          {({ blob, url, loading, error }) => 'Сохранить в PDF'}
+        </PDFDownloadLink>
+        {isSaving && <div className="text-green-700 mr-5">{isSaving && 'Сохранение документа...'}</div>}
+        {isSaved && <div className="text-green-700">{isSaved && 'Документ сохранен'}</div>}
+      </div>
       <div className="flex items-center mb-10">
         <input
           id="default-checkbox"
@@ -425,10 +510,10 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
         <label htmlFor="default-checkbox" className="ms-2 text-sm font-medium">Предпросмотр</label>
       </div>
     </div>
-    {showPreview && <div className={showPreview ? '' : 'hidden'}>
+    <div className={showPreview ? '' : 'hidden'}>
       <PDFViewer innerRef={pdfRef} style={{ width: '100%', height: '400px' }}>
         <PDF orgData={orgData} checkNumber={checkNumber} items={goods} data={data} />
       </PDFViewer>
-    </div>}
+    </div>
   </main>
 }

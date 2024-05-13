@@ -24,6 +24,9 @@ export type RowsData = {
   clientName: string
   clientPhone: string
   clientSource: string
+  prevCheckNumber: string
+  isPairSell: boolean
+  secondSeller: string
 }
 
 export type OrgData = {
@@ -152,7 +155,7 @@ export const SpreadSheet = () => {
     await sheet._spreadsheet._makeBatchUpdateRequest(requests)
   }
 
-  const publishNewRow = async ({ checkNumber, manager, seller, sellType, rows, paymentType, clientName, clientPhone, clientSource }: RowsData) => {
+  const publishNewRow = async ({ checkNumber, manager, seller, sellType, rows, paymentType, clientName, clientPhone, clientSource, prevCheckNumber, isPairSell, secondSeller }: RowsData) => {
     try {
       if (!sheetObj?.current) return
 
@@ -178,11 +181,13 @@ export const SpreadSheet = () => {
       const sum = rows.reduce((acc, item) => acc + Number(item.price) * Number(item.quantity), 0)
       const date = dateFormat(new Date(), 'mm-dd-yy')
       const time = dateFormat(new Date(), 'hh:mm')
+      const sellTypeString = prevCheckNumber ? `Выдача ${prevCheckNumber}` : sellType
+      const sellerString = isPairSell ? seller + '\r\n' + secondSeller : seller
 
       await mergeCells(sheet, start, end,[
         { column: 0, value: checkNumber },
         { column: 1, value: manager },
-        { column: 2, value: sellType },
+        { column: 2, value: sellTypeString },
         { column: 7, value: String(sum)},
         { column: 8, value: date },
         { column: 9, value: time },
@@ -190,7 +195,7 @@ export const SpreadSheet = () => {
         { column: 12, value: clientName },
         { column: 13, value: clientPhone },
         { column: 14, value: clientSource },
-        { column: 15, value: seller },
+        { column: 15, value: sellerString },
       ])
 
       setIsSaved(true)
