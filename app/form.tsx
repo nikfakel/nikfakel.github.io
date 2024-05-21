@@ -2,9 +2,10 @@ import {useRef, useState} from "react";
 import {OrgData, RowsData} from "./spreadsheet";
 import { PDF } from "./pdf/pdf";
 import { XMarkIcon } from '@heroicons/react/24/solid'
-import { PDFViewer, PDFDownloadLink } from '@react-pdf/renderer';
+import { usePDF, PDFViewer, PDFDownloadLink } from '@react-pdf/renderer';
 import dateFormat from 'dateformat';
 import {sendWhatsappNotification} from "@/app/notifications";
+import {AxiosError} from "axios";
 
 export type PDFData = {
   manager: string,
@@ -58,6 +59,21 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
   const [isPaidBefore, setIsPaidBefore] = useState(false)
   const [notificationError, setNotificationError] = useState('')
 
+  const guaranteeResult = goods.reduce((acc, item) => item.isGuarantee ? item.guarantee : acc, 0)
+  const paymentSum = payments.reduce((acc, item) => acc + item.sum, 0)
+  const checkSum = goods.reduce((acc, item)=> acc + Number(item.quantity) * Number(item.price), 0)
+
+  const data: PDFData = {
+    manager: currentManager,
+    clientName,
+    clientPhone,
+    useGuarantee,
+    disableImage,
+    guaranteeTime: guaranteeResult
+  }
+
+  const [instance, updateInstance] = usePDF({ document: <PDF orgData={orgData} checkNumber={checkNumber} items={goods} data={data} /> });
+
   const print = async () => {
     await saveRows()
     if (pdfRef.current) {
@@ -65,12 +81,18 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
     }
 
     try {
-      await sendWhatsappNotification(`Продан товар (${orgData.departmentId}) на ${goods.reduce((acc, item) => acc + Number(item.price) * Number(item.quantity), 0)} деняк: ${goods.map(item => `${item.name} - ${item.price} руб. (х${item.quantity}).`)}.
+      if (!instance.blob) {
+        setNotificationError('Не удалось отправить чек. Обратитесь к администратору')
+        return;
+      }
+
+      await sendWhatsappNotification(`Продан товар (${orgData.departmentId}) на ${goods.reduce((acc, item) => acc + Number(item.price) * Number(item.quantity), 0)} рублей: ${goods.map(item => `${item.name} - ${item.price} руб. (х${item.quantity}).`)}.
       Продавец: ${isPairSell ? currentSeller + ' ' + secondSeller : currentSeller}.
-      `)
+      `, checkNumber, instance.blob)
     } catch (e) {
       console.log('e', e)
-      setNotificationError((e as Error).message)
+      // @ts-ignore
+      setNotificationError((e as AxiosError)?.response?.data?.message)
     }
   }
 
@@ -123,10 +145,6 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
     setError(null)
   }
 
-  const guaranteeResult = goods.reduce((acc, item) => item.isGuarantee ? item.guarantee : acc, 0)
-  const paymentSum = payments.reduce((acc, item) => acc + item.sum, 0)
-  const checkSum = goods.reduce((acc, item)=> acc + Number(item.quantity) * Number(item.price), 0)
-
   const saveRows = async () => {
     if (isSaving || isSaved) {
       return
@@ -153,15 +171,6 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
     } catch (e) {
       console.log(e)
     }
-  }
-
-  const data: PDFData = {
-    manager: currentManager,
-    clientName,
-    clientPhone,
-    useGuarantee,
-    disableImage,
-    guaranteeTime: guaranteeResult
   }
 
   return <main className="p-12">
