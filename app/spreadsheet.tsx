@@ -30,6 +30,7 @@ export type RowsData = {
 }
 
 export type OrgData = {
+  departmentId: string
   managers: string[]
   sellers: string[]
   inn: string
@@ -87,6 +88,7 @@ export const SpreadSheet = () => {
         const departmentInfoPage = departmentsDoc.sheetsByTitle[departmentId]
         const departmentInfoRows = await departmentInfoPage.getRows()
         const orgData = {
+          departmentId,
           managers: departmentInfoRows.map(row => row.get('managers')).filter(Boolean),
           sellers: departmentInfoRows.map(row => row.get('sellers')).filter(Boolean),
           inn: departmentInfoRows[0].get('inn'),

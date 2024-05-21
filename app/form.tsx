@@ -4,6 +4,7 @@ import { PDF } from "./pdf/pdf";
 import { XMarkIcon } from '@heroicons/react/24/solid'
 import { PDFViewer, PDFDownloadLink } from '@react-pdf/renderer';
 import dateFormat from 'dateformat';
+import {sendWhatsappNotification} from "@/app/notifications";
 
 export type PDFData = {
   manager: string,
@@ -55,11 +56,21 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
 
   const [payments, setPayments] = useState<{ type: string, sum: number }[]>([])
   const [isPaidBefore, setIsPaidBefore] = useState(false)
+  const [notificationError, setNotificationError] = useState('')
 
   const print = async () => {
     await saveRows()
     if (pdfRef.current) {
       pdfRef.current.contentWindow?.print()
+    }
+
+    try {
+      await sendWhatsappNotification(`Продан товар (${orgData.departmentId}) на ${goods.reduce((acc, item) => acc + Number(item.price) * Number(item.quantity), 0)} деняк: ${goods.map(item => `${item.name} - ${item.price} руб. (х${item.quantity}).`)}.
+      Продавец: ${isPairSell ? currentSeller + ' ' + secondSeller : currentSeller}.
+      `)
+    } catch (e) {
+      console.log('e', e)
+      setNotificationError((e as Error).message)
     }
   }
 
@@ -498,6 +509,7 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
         </PDFDownloadLink>
         {isSaving && <div className="text-green-700 mr-5">{isSaving && 'Сохранение документа...'}</div>}
         {isSaved && <div className="text-green-700">{isSaved && 'Документ сохранен'}</div>}
+        {notificationError && <div className="text-red-700">{notificationError}</div>}
       </div>
       <div className="flex items-center mb-10">
         <input
