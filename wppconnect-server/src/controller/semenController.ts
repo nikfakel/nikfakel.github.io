@@ -16,12 +16,13 @@ export async function sendNotification(req: Request, res: Response) {
   }
 
   if (!sessionName) {
-    throw new Error('No session name in .env file');
     return res.status(500).json({
       status: 'Error',
       message: 'No session name in .env file',
     });
   }
+
+  const connectionLog: string[] = [];
 
   try {
     const { message, filename } = req.body;
@@ -49,8 +50,11 @@ export async function sendNotification(req: Request, res: Response) {
 
     if (!isConnected || req.client?.status === 'DISCONNECTED') {
       req.session = sessionName;
+      connectionLog.push(`sessionName - ${sessionName}`);
       await closeSession(req, res);
+      connectionLog.push('after close session');
       await startSession(req, res);
+      connectionLog.push('after start session');
     }
 
     await req.client.sendText(phoneNumber, message);
@@ -63,8 +67,9 @@ export async function sendNotification(req: Request, res: Response) {
     console.log('error', error);
     return res.status(500).json({
       status: 'Error',
-      message:
-        'Не удалось отправить сообщение в whatsapp или на mail. Что то пошло не так',
+      message: `Не удалось отправить сообщение в whatsapp или на mail. Что то пошло не так. ${connectionLog.join(
+        ' '
+      )}`,
       error,
     });
   }

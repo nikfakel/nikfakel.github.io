@@ -91,8 +91,12 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
       `, checkNumber, instance.blob)
     } catch (e) {
       console.log('e', e)
-      // @ts-ignore
-      setNotificationError((e as AxiosError)?.response?.data?.message)
+      if ((e as AxiosError<{ message: string }>)?.response?.data?.message) {
+        // @ts-ignore
+        setNotificationError((e as AxiosError<{ message: string }>)?.response.data.message || '')
+      } else {
+        setNotificationError('Не удалось отправить уведомление')
+      }
     }
   }
 
@@ -496,29 +500,31 @@ export const Form = ({ initialCheckNumber, orgData, publishNewRow, error, isSavi
         </button>
       </div>
       {error && <div className="text-red-500">{error}</div>}
-      <div className="flex mb-5 items-center">
-        <button
-          disabled={isSaving}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
-          onClick={print}>Распечатать</button>
-        <PDFDownloadLink
-          onClick={(e) => {
-            if (isSaving) {
-              e.preventDefault()
-            }
+      <div className="mb-5">
+        <div className="flex mb-2 items-center">
+          <button
+            disabled={isSaving}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
+            onClick={print}>Распечатать</button>
+          <PDFDownloadLink
+            onClick={(e) => {
+              if (isSaving) {
+                e.preventDefault()
+              }
 
-            if (!isSaved && !isSaving) {
-              saveRows()
-            }
-          }}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
-          document={ <PDF orgData={orgData} checkNumber={checkNumber} items={goods} data={data} />}
-          fileName="order.pdf">
-          {({ blob, url, loading, error }) => 'Сохранить в PDF'}
-        </PDFDownloadLink>
-        {isSaving && <div className="text-green-700 mr-5">{isSaving && 'Сохранение документа...'}</div>}
-        {isSaved && <div className="text-green-700">{isSaved && 'Документ сохранен'}</div>}
-        {notificationError && <div className="text-red-700">{notificationError}</div>}
+              if (!isSaved && !isSaving) {
+                saveRows()
+              }
+            }}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-5"
+            document={ <PDF orgData={orgData} checkNumber={checkNumber} items={goods} data={data} />}
+            fileName="order.pdf">
+            {({ blob, url, loading, error }) => 'Сохранить в PDF'}
+          </PDFDownloadLink>
+          {isSaving && <div className="text-green-700 mr-5">{isSaving && 'Сохранение документа...'}</div>}
+          {isSaved && <div className="text-green-700">{isSaved && 'Документ сохранен'}</div>}
+        </div>
+        {notificationError && <div className="text-red-700 mb-5">{notificationError}</div>}
       </div>
       <div className="flex items-center mb-10">
         <input
