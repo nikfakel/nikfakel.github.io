@@ -1,0 +1,10 @@
+{
+  "apps": [
+    {
+      "name": "wppserver",
+      "script": "tsx watch src/server.ts",
+      "watch": "./",
+      "log_date_format": "YYYY-MM-DD HH:mm Z"
+    }
+  ]
+}
